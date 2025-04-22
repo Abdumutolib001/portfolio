@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Abdumutolib's Portfolio</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        background-color: #000;
+        color: #00ff00;
+        font-family: "Courier New", monospace;
+        margin: 0;
+        overflow-y: auto;
+      }
+      #loading-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: #000;
+        z-index: 9999;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      #loading-canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+      }
+      #loading-text {
+        font-size: 2rem;
+        color: #00ff00;
+        text-shadow: 0 0 10px #00ff00;
+        position: relative;
+        z-index: 1;
+        animation: pulse 2s infinite;
+      }
+      @keyframes pulse {
+        0% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+        100% {
+          opacity: 1;
+        }
+      }
+      .typewriter {
+        overflow: hidden;
+        white-space: nowrap;
+        direction: rtl;
+        text-align: left;
+        animation: typing 2s steps(40, end) forwards;
+      }
+      @keyframes typing {
+        from {
+          width: 100%;
+        }
+        to {
+          width: 0;
+        }
+      }
+      #main-content {
+        opacity: 0;
+        transform: translateY(100vh);
+        animation: slideUp 1s ease-out 3s forwards; /* Loading 3s ga uzaytirildi */
+        min-height: 100vh;
+      }
+      @keyframes slideUp {
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      #bomb {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 60px;
+        height: 60px;
+        cursor: pointer;
+        transition: transform 0.3s;
+        filter: drop-shadow(0 0 5px #00ff00);
+        z-index: 10001;
+      }
+      #bomb.explode {
+        animation: explode 2s forwards;
+      }
+      @keyframes explode {
+        0% {
+          transform: translate(-50%, -50%) scale(1);
+          top: 50%;
+          right: 50%;
+        }
+        50% {
+          transform: translate(-50%, -50%) scale(2) rotate(10deg);
+        }
+        100% {
+          transform: translate(-50%, -50%) scale(2) rotate(-10deg);
+        }
+      }
+      #explosion-effect {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(circle, rgba(0, 255, 0, 0.8), transparent);
+        opacity: 0;
+        z-index: 10000;
+        pointer-events: none;
+      }
+      #explosion-effect.active {
+        animation: radiate 1s forwards;
+      }
+      @keyframes radiate {
+        0% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0;
+        }
+      }
+      .block {
+        transition: transform 0.5s, opacity 0.5s;
+        opacity: 1;
+      }
+      .block.scatter {
+        transform: translate(
+          calc(200vw * var(--scatter-x)),
+          calc(200vh * var(--scatter-y))
+        );
+        opacity: 0;
+      }
+      .block.reassemble {
+        animation: reassemble 1s ease-in forwards;
+        opacity: 1;
+      }
+      @keyframes reassemble {
+        from {
+          transform: translate(
+            calc(200vw * var(--scatter-x)),
+            calc(200vh * var(--scatter-y))
+          );
+          opacity: 0;
+        }
+        to {
+          transform: translate(0, 0);
+          opacity: 1;
+        }
+      }
+      .skill-card,
+      .project-card {
+        transition: transform 0.3s, box-shadow 0.3s;
+        background: rgba(0, 255, 0, 0.1);
+        border: 1px solid #00ff00;
+      }
+      .skill-card:hover,
+      .project-card:hover {
+        transform: scale(1.1);
+        box-shadow: 0 0 15px #00ff00;
+      }
+      .matrix-bg {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: -1;
+        opacity: 0.3;
+      }
+      #language-switcher {
+        position: fixed;
+        right: 20px;
+        z-index: 1000;
+      }
+      #language-switcher button {
+        background: rgba(0, 255, 0, 0.2);
+        border: 1px solid #00ff00;
+        color: #00ff00;
+        padding: 5px 10px;
+        margin: 0 5px;
+        cursor: pointer;
+        transition: background 0.3s;
+      }
+      #language-switcher button:hover {
+        background: rgba(0, 255, 0, 0.5);
+      }
+      #navbar {
+        position: sticky;
+        top: 0;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 999;
+        padding: 10px 0;
+        border-bottom: 1px solid #00ff00;
+      }
+      #navbar a {
+        color: #00ff00;
+        margin: 0 15px;
+        text-decoration: none;
+        transition: color 0.3s;
+      }
+      #navbar a:hover {
+        color: #33ff33;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="matrix-bg" class="matrix-bg"></canvas>
+    <div id="loading-screen">
+      <canvas id="loading-canvas"></canvas>
+      <div id="loading-text">Initializing System</div>
+    </div>
+    <div id="language-switcher">
+      <button onclick="switchLanguage('uz')">UZ</button>
+      <button onclick="switchLanguage('en')">EN</button>
+      <button onclick="switchLanguage('ru')">RU</button>
+    </div>
+    <nav id="navbar" class="text-center">
+      <a href="#about">About</a>
+      <a href="#skills">Skills</a>
+      <a href="#projects">Projects</a>
+      <a href="#contact">Contact</a>
+    </nav>
+    <div id="main-content" class="container mx-auto p-4">
+      <header
+        class="text-center py-10 block"
+        style="--scatter-x: 0.5; --scatter-y: -0.5"
+      >
+        <h1 class="text-4xl font-bold typewriter">Abdumutolib's Portfolio</h1>
+        <p class="mt-2 typewriter">Frontend & Backend Developer</p>
+      </header>
+      <section
+        id="about"
+        class="my-10 block"
+        style="--scatter-x: -0.3; --scatter-y: 0.3"
+      >
+        <h2 class="text-2xl font-bold text-center typewriter">About Me</h2>
+        <div class="bg-gray-900 p-6 rounded-lg mt-6 text-center">
+          <p><strong>Ismim:</strong> Abdumutolib</p>
+          <p><strong>Yoshim:</strong> <span id="age"></span> yosh</p>
+          <p><strong>Sinf:</strong> 9-sinf o‘quvchisi</p>
+          <p>
+            <strong>Maqsadim:</strong> IELTS 9 olish, Koreyadagi prestijli
+            dasturlash institutida o‘qish, va o‘z IT kompaniyamni yaratish.
+          </p>
+          <p>
+            <strong>Qiziqishlarim:</strong> Web dasturlash, sun'iy intellekt,
+            innovatsion loyihalar yaratish
+          </p>
+          <p>
+            <strong>Hayotiy maqsad:</strong> Ota-onamga yaxshi hayot yaratib
+            berish
+          </p>
+        </div>
+      </section>
+      <section
+        id="skills"
+        class="my-10 block"
+        style="--scatter-x: -0.5; --scatter-y: 0.5"
+      >
+        <h2 class="text-2xl font-bold text-center typewriter">Skills</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+          <div class="skill-card p-4 rounded-lg text-center">
+            <img
+              src="https://img.icons8.com/color/48/000000/html-5.png"
+              alt="HTML"
+              class="mx-auto"
+            />
+            <p>HTML5</p>
+          </div>
+          <div class="skill-card p-4 rounded-lg text-center">
+            <img
+              src="https://img.icons8.com/color/48/000000/css3.png"
+              alt="CSS"
+              class="mx-auto"
+            />
+            <p>CSS3</p>
+          </div>
+          <div class="skill-card p-4 rounded-lg text-center">
+            <img
+              src="https://img.icons8.com/color/48/000000/javascript.png"
+              alt="JavaScript"
+              class="mx-auto"
+            />
+            <p>JavaScript</p>
+          </div>
+          <div class="skill-card p-4 rounded-lg text-center">
+            <img
+              src="https://img.icons8.com/color/48/000000/react-native.png"
+              alt="React"
+              class="mx-auto"
+            />
+            <p>React</p>
+          </div>
+          <div class="skill-card p-4 rounded-lg text-center">
+            <img
+              src="https://img.icons8.com/color/48/000000/nodejs.png"
+              alt="Node.js"
+              class="mx-auto"
+            />
+            <p>Node.js</p>
+          </div>
+          <div class="skill-card p-4 rounded-lg text-center">
+            <img
+              src="https://img.icons8.com/color/48/000000/python.png"
+              alt="FastAPI"
+              class="mx-auto"
+            />
+            <p>FastAPI</p>
+          </div>
+          <div class="skill-card p-4 rounded-lg text-center">
+            <img
+              src="https://img.icons8.com/color/48/000000/postgreesql.png"
+              alt="PostgreSQL"
+              class="mx-auto"
+            />
+            <p>PostgreSQL</p>
+          </div>
+          <div class="skill-card p-4 rounded-lg text-center">
+            <img
+              src="https://img.icons8.com/color/48/000000/git.png"
+              alt="Git"
+              class="mx-auto"
+            />
+            <p>Git</p>
+          </div>
+        </div>
+      </section>
+      <section
+        id="projects"
+        class="my-10 block"
+        style="--scatter-x: 0.3; --scatter-y: 0.3"
+      >
+        <h2 class="text-2xl font-bold text-center typewriter">Projects</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+          <div class="project-card p-6 rounded-lg">
+            <h3 class="text-xl font-bold">Portfolio Website</h3>
+            <p class="mt-2">
+              HTML, CSS, JS, Matrix-style UI, Animatsiyalar bilan shaxsiy
+              portfolio.
+            </p>
+            <div class="mt-4">
+              <span
+                class="inline-block bg-green-500 text-black px-3 py-1 rounded-full text-sm"
+                >HTML</span
+              >
+              <span
+                class="inline-block bg-green-500 text-black px-3 py-1 rounded-full text-sm"
+                >CSS</span
+              >
+              <span
+                class="inline-block bg-green-500 text-black px-3 py-1 rounded-full text-sm"
+                >JavaScript</span
+              >
+            </div>
+            <a
+              href="https://abdumutolib001.github.io/portfolio-matrix/"
+              class="mt-2 inline-block text-green-400 hover:underline"
+              >Visit</a
+            >
+          </div>
+          <div class="project-card p-6 rounded-lg">
+            <h3 class="text-xl font-bold">Online Store</h3>
+            <p class="mt-2">
+              React/Next.js frontend va FastAPI, PostgreSQL backend bilan
+              e-commerce platforma (ishlab chiqilmoqda).
+            </p>
+            <div class="mt-4">
+              <span
+                class="inline-block bg-green-500 text-black px-3 py-1 rounded-full text-sm"
+                >React</span
+              >
+              <span
+                class="inline-block bg-green-500 text-black px-3 py-1 rounded-full text-sm"
+                >FastAPI</span
+              >
+              <span
+                class="inline-block bg-green-500 text-black px-3 py-1 rounded-full text-sm"
+                >PostgreSQL</span
+              >
+            </div>
+          </div>
+        </div>
+      </section>
+      <section
+        id="contact"
+        class="my-10 block"
+        style="--scatter-x: 0.4; --scatter-y: -0.4"
+      >
+        <h2 class="text-2xl font-bold text-center typewriter">Contact</h2>
+        <div class="bg-gray-900 p-6 rounded-lg mt-6 text-center">
+          <p>
+            <strong>Email:</strong>
+            <a
+              href="mailto:abdumutolib60@gmail.com"
+              class="text-green-400 hover:underline"
+              >abdumutolib60@gmail.com</a
+            >
+          </p>
+          <p>
+            <strong>Telegram:</strong>
+            <a
+              href="https://t.me/mrabdumutolib_dev"
+              class="text-green-400 hover:underline"
+              >@mrabdumutolib_dev</a
+            >
+          </p>
+          <p>
+            <strong>GitHub:</strong>
+            <a
+              href="https://github.com/Abdumutolib001"
+              class="text-green-400 hover:underline"
+              >Abdumutolib001</a
+            >
+          </p>
+        </div>
+      </section>
+    </div>
+    <img
+      id="bomb"
+      src="https://img.icons8.com/emoji/48/000000/bomb-emoji.png"
+      alt="Bomb"
+    />
+    <div id="explosion-effect"></div>
+    <script>
+      // Yoshni hisoblash funksiyasi
+      function calculateAge() {
+        const birthDate = new Date(2010, 2, 1);
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        if (
+          monthDiff < 0 ||
+          (monthDiff === 0 && today.getDate() < birthDate.getDate())
+        ) {
+          age--;
+        }
+        document.getElementById("age").textContent = age;
+      }
+
+      const translations = {
+        uz: {
+          header: "Abdumutolibning Portfolio",
+          subheader: "Frontend va Backend Dasturchi",
+          about: {
+            title: "Men Haqimda",
+            name: "Ismim: Abdumutolib",
+            age: "Yoshim: <span id='age'></span> yosh",
+            grade: "Sinf: 9-sinf o‘quvchisi",
+            goals:
+              "Maqsadim: IELTS 9 olish, Koreyadagi prestijli dasturlash institutida o‘qish, va o‘z IT kompaniyamni yaratish.",
+            interests:
+              "Qiziqishlarim: Web dasturlash, sun'iy intellekt, innovatsion loyihalar yaratish",
+            life_goal: "Hayotiy maqsad: Ota-onamga yaxshi hayot yaratib berish",
+          },
+          skills: "Ko‘nikmalar",
+          projects: "Loyihalar",
+          project1: {
+            title: "Portfolio Sayti",
+            desc: "HTML, CSS, JS, Matrix-style UI, Animatsiyalar bilan shaxsiy portfolio.",
+          },
+          project2: {
+            title: "Onlayn Do‘kon",
+            desc: "React/Next.js frontend va FastAPI, PostgreSQL backend bilan e-commerce platforma (ishlab chiqilmoqda).",
+          },
+          contact: {
+            title: "Bog‘lanish",
+            email:
+              "Email: <a href='mailto:abdumutolib60@gmail.com' class='text-green-400 hover:underline'>abdumutolib60@gmail.com</a>",
+            telegram:
+              "Telegram: <a href='https://t.me/mrabdumutolib_dev' class='text-green-400 hover:underline'>@mrabdumutolib_dev</a>",
+            github:
+              "GitHub: <a href='https://github.com/Abdumutolib001' class='text-green-400 hover:underline'>Abdumutolib001</a>",
+          },
+          navbar: {
+            about: "Men Haqimda",
+            skills: "Ko‘nikmalar",
+            projects: "Loyihalar",
+            contact: "Bog‘lanish",
+          },
+        },
+        en: {
+          header: "Abdumutolib's Portfolio",
+          subheader: "Frontend & Backend Developer",
+          about: {
+            title: "About Me",
+            name: "Name: Abdumutolib",
+            age: "Age: <span id='age'></span> years",
+            grade: "Grade: 9th grade student",
+            goals:
+              "Goals: Score 9 on IELTS, study at a prestigious programming institute in Korea, and create my own IT company.",
+            interests:
+              "Interests: Web development, artificial intelligence, creating innovative projects",
+            life_goal: "Life goal: Provide a good life for my parents",
+          },
+          skills: "Skills",
+          projects: "Projects",
+          project1: {
+            title: "Portfolio Website",
+            desc: "A personal portfolio with HTML, CSS, JS, Matrix-style UI, and animations.",
+          },
+          project2: {
+            title: "Online Store",
+            desc: "An e-commerce platform with React/Next.js frontend and FastAPI, PostgreSQL backend (in development).",
+          },
+          contact: {
+            title: "Contact",
+            email:
+              "Email: <a href='mailto:abdumutolib60@gmail.com' class='text-green-400 hover:underline'>abdumutolib60@gmail.com</a>",
+            telegram:
+              "Telegram: <a href='https://t.me/mrabdumutolib_dev' class='text-green-400 hover:underline'>@mrabdumutolib_dev</a>",
+            github:
+              "GitHub: <a href='https://github.com/Abdumutolib001' class='text-green-400 hover:underline'>Abdumutolib001</a>",
+          },
+          navbar: {
+            about: "About",
+            skills: "Skills",
+            projects: "Projects",
+            contact: "Contact",
+          },
+        },
+        ru: {
+          header: "Портфолио Абдумутаблиба",
+          subheader: "Фронтенд и Бэкенд Разработчик",
+          about: {
+            title: "Обо мне",
+            name: "Имя: Абдумутаблиб",
+            age: "Возраст: <span id='age'></span> лет",
+            grade: "Класс: Ученик 9-го класса",
+            goals:
+              "Цели: Набрать 9 баллов на IELTS, учиться в престижном институте программирования в Корее и создать собственную IT-компанию.",
+            interests:
+              "Интересы: Веб-разработка, искусственный интеллект, создание инновационных проектов",
+            life_goal:
+              "Жизненная цель: Обеспечить хорошую жизнь для моих родителей",
+          },
+          skills: "Навыки",
+          projects: "Проекты",
+          project1: {
+            title: "Веб-сайт портфолио",
+            desc: "Личное портфолио с HTML, CSS, JS, интерфейсом в стиле Матрицы и анимациями.",
+          },
+          project2: {
+            title: "Онлайн-магазин",
+            desc: "Платформа электронной коммерции с фронтендом на React/Next.js и бэкендом на FastAPI, PostgreSQL (в разработке).",
+          },
+          contact: {
+            title: "Контакты",
+            email:
+              "Email: <a href='mailto:abdumutolib60@gmail.com' class='text-green-400 hover:underline'>abdumutolib60@gmail.com</a>",
+            telegram:
+              "Telegram: <a href='https://t.me/mrabdumutolib_dev' class='text-green-400 hover:underline'>@mrabdumutolib_dev</a>",
+            github:
+              "GitHub: <a href='https://github.com/Abdumutolib001' class='text-green-400 hover:underline'>Abdumutolib001</a>",
+          },
+          navbar: {
+            about: "Обо мне",
+            skills: "Навыки",
+            projects: "Проекты",
+            contact: "Контакты",
+          },
+        },
+      };
+
+      function switchLanguage(lang) {
+        document.querySelector("header h1").textContent =
+          translations[lang].header;
+        document.querySelector("header p").textContent =
+          translations[lang].subheader;
+        document.querySelector("#about h2").textContent =
+          translations[lang].about.title;
+        document.querySelector("#about .bg-gray-900").innerHTML = `
+                <p><strong>${translations[lang].about.name}</strong></p>
+                <p><strong>${translations[lang].about.age}</strong></p>
+                <p><strong>${translations[lang].about.grade}</strong></p>
+                <p><strong>${translations[lang].about.goals}</strong></p>
+                <p><strong>${translations[lang].about.interests}</strong></p>
+                <p><strong>${translations[lang].about.life_goal}</strong></p>
+            `;
+        document.querySelector("#skills h2").textContent =
+          translations[lang].skills;
+        document.querySelector("#projects h2").textContent =
+          translations[lang].projects;
+        document
+          .querySelectorAll("#projects .project-card")[0]
+          .querySelector("h3").textContent = translations[lang].project1.title;
+        document
+          .querySelectorAll("#projects .project-card")[0]
+          .querySelector("p").textContent = translations[lang].project1.desc;
+        document
+          .querySelectorAll("#projects .project-card")[1]
+          .querySelector("h3").textContent = translations[lang].project2.title;
+        document
+          .querySelectorAll("#projects .project-card")[1]
+          .querySelector("p").textContent = translations[lang].project2.desc;
+        document.querySelector("#contact h2").textContent =
+          translations[lang].contact.title;
+        document.querySelector("#contact .bg-gray-900").innerHTML = `
+                <p><strong>${translations[lang].contact.email}</strong></p>
+                <p><strong>${translations[lang].contact.telegram}</strong></p>
+                <p><strong>${translations[lang].contact.github}</strong></p>
+            `;
+        document.querySelector('#navbar a[href="#about"]').textContent =
+          translations[lang].navbar.about;
+        document.querySelector('#navbar a[href="#skills"]').textContent =
+          translations[lang].navbar.skills;
+        document.querySelector('#navbar a[href="#projects"]').textContent =
+          translations[lang].navbar.projects;
+        document.querySelector('#navbar a[href="#contact"]').textContent =
+          translations[lang].navbar.contact;
+        calculateAge();
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        calculateAge();
+        switchLanguage("uz");
+
+        const loadingScreen = document.getElementById("loading-screen");
+        const loadingCanvas = document.getElementById("loading-canvas");
+        const ctx = loadingCanvas.getContext("2d");
+        const bomb = document.getElementById("bomb");
+        const explosionEffect = document.getElementById("explosion-effect");
+        const mainContent = document.getElementById("main-content");
+        const blocks = document.querySelectorAll(".block");
+        const typewriters = document.querySelectorAll(".typewriter");
+
+        // Loading Canvas sozlamalari
+        loadingCanvas.height = window.innerHeight;
+        loadingCanvas.width = window.innerWidth;
+        const chars = "01";
+        const fontSize = 14;
+        const columns = loadingCanvas.width / fontSize;
+        const drops = [];
+
+        for (let x = 0; x < columns; x++) {
+          drops[x] = 1;
+        }
+
+        function drawLoading() {
+          ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+          ctx.fillRect(0, 0, loadingCanvas.width, loadingCanvas.height);
+          ctx.fillStyle = "#00ff00";
+          ctx.font = fontSize + "px monospace";
+
+          for (let i = 0; i < drops.length; i++) {
+            const text = chars.charAt(Math.floor(Math.random() * chars.length));
+            ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+            if (
+              drops[i] * fontSize > loadingCanvas.height &&
+              Math.random() > 0.975
+            ) {
+              drops[i] = 0;
+            }
+            drops[i]++;
+          }
+        }
+
+        const loadingInterval = setInterval(drawLoading, 33);
+        setTimeout(() => {
+          clearInterval(loadingInterval);
+          loadingScreen.style.opacity = "0";
+          setTimeout(() => {
+            loadingScreen.style.display = "none";
+          }, 500);
+        }, 3000);
+
+        bomb.addEventListener("click", () => {
+          bomb.style.top = "50%";
+          bomb.style.right = "50%";
+          bomb.classList.add("explode");
+
+          setTimeout(() => {
+            explosionEffect.classList.add("active");
+            blocks.forEach((block) => {
+              block.classList.add("scatter");
+            });
+
+            typewriters.forEach((t) => (t.style.width = "100%"));
+
+            mainContent.style.opacity = "0";
+            mainContent.style.transform = "translateY(100vh)";
+
+            setTimeout(() => {
+              blocks.forEach((block) => {
+                block.classList.remove("scatter");
+                block.classList.add("reassemble");
+              });
+
+              mainContent.style.animation = "none";
+              mainContent.offsetHeight;
+              mainContent.style.animation = "slideUp 1s ease-out forwards";
+
+              typewriters.forEach((t) => {
+                t.style.width = "0";
+                t.style.animation = "typing 2s steps(40, end) forwards";
+              });
+
+              setTimeout(() => {
+                bomb.classList.remove("explode");
+                bomb.style.top = "initial";
+                bomb.style.right = "20px";
+                explosionEffect.classList.remove("active");
+                blocks.forEach((block) => block.classList.remove("reassemble"));
+              }, 1000);
+            }, 1500);
+          }, 2000);
+        });
+
+        // Matrix background
+        const canvas = document.getElementById("matrix-bg");
+        const ctxBg = canvas.getContext("2d");
+        canvas.height = window.innerHeight;
+        canvas.width = window.innerWidth;
+        const dropsBg = [];
+
+        for (let x = 0; x < columns; x++) {
+          dropsBg[x] = 1;
+        }
+
+        function drawBg() {
+          ctxBg.fillStyle = "rgba(0, 0, 0, 0.05)";
+          ctxBg.fillRect(0, 0, canvas.width, canvas.height);
+          ctxBg.fillStyle = "#00ff00";
+          ctxBg.font = fontSize + "px monospace";
+
+          for (let i = 0; i < dropsBg.length; i++) {
+            const text = chars.charAt(Math.floor(Math.random() * chars.length));
+            ctxBg.fillText(text, i * fontSize, dropsBg[i] * fontSize);
+            if (
+              dropsBg[i] * fontSize > canvas.height &&
+              Math.random() > 0.975
+            ) {
+              dropsBg[i] = 0;
+            }
+            dropsBg[i]++;
+          }
+        }
+
+        setInterval(drawBg, 33);
+      });
+    </script>
+  </body>
+</html>
